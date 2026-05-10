@@ -1,5 +1,0 @@
---- Baseline Benchmark Results ---
-Tokens Generated: 150
-Generation Time:  10.17 seconds
-Throughput:       14.76 tokens/sec
-Peak VRAM Usage:  5.77 GB
