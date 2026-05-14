@@ -10,9 +10,10 @@ Why structured JSON:
   The dashboard reads one unified format regardless of backend.
 
 How to run:
-  python3 benchmark.py --binary ~/projects/llm-fine-tuning/llama.cpp/build/bin/llama-cli
-                       --model ~/models/phi3-mini/Phi-3-mini-4k-instruct-Q4_K_M.gguf
-                       --output ~/projects/llm-inference-core/benchmarks/results/llamacpp.json
+  python3 benchmark.py \
+    --binary ~/projects/llm-fine-tuning/llama.cpp/build/bin/llama-cli \
+    --model ~/models/phi3-mini/Phi-3-mini-4k-instruct-Q4_K_M.gguf \
+    --output ~/projects/llm-fine-tuning/benchmarks/results/llamacpp.json
 """
 
 import subprocess
@@ -143,51 +144,73 @@ def parse_llamacpp_output(output: str) -> dict:
 
 def run_single(binary: str, model: str, config: dict) -> dict:
     """
-    config keys:
-      ngl       — number of GPU layers (0 = CPU only, 33 = full GPU)
-      n_tokens  — tokens to generate
-      prompt    — input text
-      temp      — temperature (0 = deterministic)
-      label     — human-readable name for this config
+    WHY we use `script` here:
+      llama.cpp writes its timing line [ Prompt: X t/s | Generation: Y t/s ]
+      directly to /dev/tty (the physical terminal), bypassing stdout and stderr.
+      Normal subprocess capture misses it entirely.
+
+      `script` creates a pseudo-terminal (PTY) — a fake terminal that the program
+      thinks is a real screen. Everything written to /dev/tty goes into the PTY,
+      which `script` saves to a file. We then read that file to get ALL output
+      including the timing line.
+
+    WHY we strip ANSI codes:
+      Terminal output contains escape sequences like \x1b[0m (color codes) and
+      \x1b[2K (cursor controls). These are instructions to the terminal renderer,
+      not actual text. If we don't strip them, our regex won't find the timing line
+      because it's buried in escape code noise.
     """
-    cmd = [
-        binary,
-        "-m", model,
-        "-n", str(config["n_tokens"]),
-        "-ngl", str(config["ngl"]),
-        "-p", config["prompt"],
-        "--temp", str(config.get("temp", 0)),
-        "--single-turn",
-        "--no-display-prompt"
-    ]
+    # Build the inner llama.cpp command as a shell string
+    # (script -c takes a single string, not a list)
+    inner_cmd = (
+        f"{binary}"
+        f" -m {model}"
+        f" -n {config['n_tokens']}"
+        f" -ngl {config['ngl']}"
+        f" -p \"{config['prompt']}\""
+        f" --temp {config.get('temp', 0)}"
+        f" --single-turn"
+    )
+
+    # Temp file where script saves all terminal output
+    capture_file = f"/tmp/llama_bench_{config['label']}.txt"
+
+    # Outer command: script wraps the inner command
+    # -q = quiet (no "Script started/stopped" header)
+    # -c = command to run inside the fake terminal
+    # last arg = file to save output to
+    cmd = ["script", "-q", "-c", inner_cmd, capture_file]
 
     print(f"\n{'='*60}")
     print(f"Running: {config['label']}")
-    print(f"  GPU layers: {config['ngl']}")
-    print(f"  Tokens to generate: {config['n_tokens']}")
+    print(f"  GPU layers : {config['ngl']}")
+    print(f"  Tokens     : {config['n_tokens']}")
     print(f"{'='*60}")
 
-    # Start GPU sampling before launching inference
+    # Start GPU sampling BEFORE launching — we want to capture the model load spike
     sampler = GPUSampler(interval=0.5)
     sampler.start()
 
     start_time = time.time()
-
-    proc = subprocess.run(
-        cmd,
-        capture_output=False,          # let output stream to terminal
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        text=True
-    )
-
+    subprocess.run(cmd)  # runs and blocks until llama.cpp exits
     elapsed = time.time() - start_time
+
     sampler.stop()
 
-    # Parse llama.cpp output
-    parsed = parse_llamacpp_output(proc.stdout)
+    # Read what script captured
+    try:
+        raw = Path(capture_file).read_text(errors="replace")
+    except FileNotFoundError:
+        raw = ""
 
-    # Combine everything into one result record
+    # Strip ANSI escape codes so our regex can find clean text
+    # \x1b[ starts an escape sequence, [0-9;]* matches params, [a-zA-Z] ends it
+    ansi_escape = re.compile(r'\x1b\[[0-9;]*[a-zA-Z]')
+    clean = ansi_escape.sub('', raw)
+
+    # Parse timing and memory from cleaned output
+    parsed = parse_llamacpp_output(clean)
+
     result = {
         "label": config["label"],
         "timestamp": datetime.datetime.now().isoformat(),
@@ -210,14 +233,13 @@ def run_single(binary: str, model: str, config: dict) -> dict:
             "vram_total_used_mb": parsed.get("vram_used_mb"),
             **sampler.summary()
         },
-        "raw_output": proc.stdout   # keep full output for debugging
+        "raw_output": clean
     }
 
-    # Print summary to terminal
     gen = parsed.get("generation_tokens_per_sec", "N/A")
-    prompt = parsed.get("prompt_tokens_per_sec", "N/A")
+    prompt_tps = parsed.get("prompt_tokens_per_sec", "N/A")
     vram_delta = sampler.summary().get("vram_delta_mb", "N/A")
-    print(f"\nResult: prompt={prompt} t/s | generation={gen} t/s | VRAM delta={vram_delta} MB")
+    print(f"\nResult: prompt={prompt_tps} t/s | generation={gen} t/s | VRAM delta={vram_delta} MB")
 
     return result
 
@@ -225,7 +247,7 @@ def run_single(binary: str, model: str, config: dict) -> dict:
 # ─────────────────────────────────────────────
 # BENCHMARK SUITE
 # The set of experiments we run.
-# Each config tests a specific variable.
+# Each config tests one specific variable.
 # ─────────────────────────────────────────────
 
 BENCHMARK_CONFIGS = [
@@ -267,28 +289,23 @@ BENCHMARK_CONFIGS = [
 def main():
     parser = argparse.ArgumentParser(description="llama.cpp benchmark suite")
     parser.add_argument("--binary", required=True, help="Path to llama-cli binary")
-    parser.add_argument("--model", required=True, help="Path to .gguf model file")
+    parser.add_argument("--model",  required=True, help="Path to .gguf model file")
     parser.add_argument("--output", required=True, help="Path to save JSON results")
-    parser.add_argument("--configs", default="all", help="Comma-separated config labels, or 'all'")
+    parser.add_argument("--configs", default="all",
+                        help="Comma-separated config labels to run, or 'all'")
     args = parser.parse_args()
 
-    # Validate paths
     if not Path(args.binary).exists():
-        print(f"ERROR: binary not found: {args.binary}")
-        return
+        print(f"ERROR: binary not found: {args.binary}"); return
     if not Path(args.model).exists():
-        print(f"ERROR: model not found: {args.model}")
-        return
+        print(f"ERROR: model not found: {args.model}"); return
 
-    # Select configs to run
-    if args.configs == "all":
-        configs = BENCHMARK_CONFIGS
-    else:
-        labels = args.configs.split(",")
-        configs = [c for c in BENCHMARK_CONFIGS if c["label"] in labels]
+    configs = BENCHMARK_CONFIGS if args.configs == "all" else [
+        c for c in BENCHMARK_CONFIGS if c["label"] in args.configs.split(",")
+    ]
 
     print(f"Running {len(configs)} benchmark configurations")
-    print(f"Model: {args.model}")
+    print(f"Model : {args.model}")
     print(f"Output: {args.output}")
 
     results = []
@@ -296,25 +313,23 @@ def main():
         result = run_single(args.binary, args.model, config)
         results.append(result)
 
-        # Save after every run — don't lose data if something crashes
+        # Save after every run so we don't lose data if something crashes
         output_path = Path(args.output)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "w") as f:
             json.dump(results, f, indent=2)
-        print(f"Saved {len(results)} results to {args.output}")
+        print(f"Saved {len(results)} result(s) → {args.output}")
 
     print(f"\n{'='*60}")
     print("BENCHMARK COMPLETE")
     print(f"{'='*60}")
-    print(f"\nSummary:")
-    print(f"{'Config':<30} {'Prompt t/s':>12} {'Gen t/s':>12} {'VRAM delta':>12}")
+    print(f"\n{'Config':<30} {'Prompt t/s':>12} {'Gen t/s':>12} {'VRAM delta':>12}")
     print("-" * 70)
     for r in results:
-        label = r["label"]
-        prompt = r["timing"].get("prompt_tokens_per_sec") or "N/A"
-        gen = r["timing"].get("generation_tokens_per_sec") or "N/A"
-        vram = r["memory"].get("vram_delta_mb") or "N/A"
-        print(f"{label:<30} {str(prompt):>12} {str(gen):>12} {str(vram):>12}")
+        p   = r["timing"].get("prompt_tokens_per_sec") or "N/A"
+        g   = r["timing"].get("generation_tokens_per_sec") or "N/A"
+        v   = r["memory"].get("vram_delta_mb") or "N/A"
+        print(f"{r['label']:<30} {str(p):>12} {str(g):>12} {str(v):>12}")
 
 
 if __name__ == "__main__":
