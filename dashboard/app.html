@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Inference Benchmark — Phase 1</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Space+Grotesk:wght@300;400;600&display=swap');
+
+  :root {
+    --bg:        #080c10;
+    --bg2:       #0d1117;
+    --bg3:       #131920;
+    --border:    #1e2d3d;
+    --accent:    #00d4ff;
+    --accent2:   #ff6b35;
+    --accent3:   #39ff14;
+    --text:      #c9d1d9;
+    --text-dim:  #4a5568;
+    --vllm:      #00d4ff;
+    --ollama:    #ff6b35;
+    --llamacpp:  #a78bfa;
+    --good:      #39ff14;
+    --warn:      #fbbf24;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* scanline overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,212,255,0.015) 2px,
+      rgba(0,212,255,0.015) 4px
+    );
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* ── HEADER ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 24px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg2);
+  }
+
+  .logo {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+
+  .logo span {
+    color: var(--text-dim);
+    font-weight: 300;
+  }
+
+  .header-meta {
+    display: flex;
+    gap: 32px;
+    align-items: center;
+  }
+
+  .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    padding: 4px 10px;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+
+  .badge-green { background: rgba(57,255,20,0.1); color: var(--good); border: 1px solid rgba(57,255,20,0.3); }
+  .badge-blue  { background: rgba(0,212,255,0.1); color: var(--accent); border: 1px solid rgba(0,212,255,0.3); }
+
+  /* ── HERO STATS ── */
+  .hero {
+    padding: 40px 40px 0;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+
+  .stat-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-top: 2px solid;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .stat-card::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 60px; height: 60px;
+    background: radial-gradient(circle at top right, currentColor, transparent 70%);
+    opacity: 0.05;
+  }
+
+  .stat-card.blue  { border-top-color: var(--vllm);    color: var(--vllm); }
+  .stat-card.orange{ border-top-color: var(--ollama);  color: var(--ollama); }
+  .stat-card.purple{ border-top-color: var(--llamacpp);color: var(--llamacpp); }
+  .stat-card.green { border-top-color: var(--good);    color: var(--good); }
+
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .stat-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 36px;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-unit {
+    font-size: 12px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .stat-sub {
+    margin-top: 12px;
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── SECTION TITLE ── */
+  .section {
+    padding: 40px 40px 0;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .section-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .section-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── CHART GRID ── */
+  .chart-grid {
+    display: grid;
+    gap: 16px;
+  }
+
+  .chart-grid-2 { grid-template-columns: 1fr 1fr; }
+  .chart-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  .chart-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    padding: 28px;
+    position: relative;
+  }
+
+  .chart-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+
+  .chart-subtitle {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  .chart-wrap {
+    position: relative;
+    height: 260px;
+  }
+
+  .chart-wrap-tall {
+    position: relative;
+    height: 320px;
+  }
+
+  /* ── INSIGHT BOX ── */
+  .insight {
+    background: rgba(0,212,255,0.04);
+    border: 1px solid rgba(0,212,255,0.15);
+    border-left: 3px solid var(--accent);
+    padding: 16px 20px;
+    margin-top: 16px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text-dim);
+  }
+
+  .insight strong { color: var(--accent); font-family: 'JetBrains Mono', monospace; }
+
+  .insight-warn {
+    border-left-color: var(--ollama);
+    background: rgba(255,107,53,0.04);
+    border-color: rgba(255,107,53,0.15);
+  }
+  .insight-warn strong { color: var(--ollama); }
+
+  /* ── COMPARISON TABLE ── */
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+  }
+
+  th {
+    text-align: left;
+    padding: 10px 16px;
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border-bottom: 1px solid var(--border);
+  }
+
+  td {
+    padding: 12px 16px;
+    border-bottom: 1px solid rgba(30,45,61,0.5);
+    color: var(--text);
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(0,212,255,0.03); }
+
+  .td-backend { font-weight: 600; }
+  .td-vllm    { color: var(--vllm); }
+  .td-ollama  { color: var(--ollama); }
+  .td-llama   { color: var(--llamacpp); }
+  .td-good    { color: var(--good); }
+  .td-warn    { color: var(--warn); }
+  .td-bad     { color: #f87171; }
+
+  /* ── VRAM TIMELINE ── */
+  .vram-labels {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+
+  .vram-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .vram-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    margin-top: 60px;
+    border-top: 1px solid var(--border);
+    padding: 24px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .footer-text {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    letter-spacing: 0.1em;
+  }
+
+  /* ── GPU SPECS ROW ── */
+  .specs-row {
+    display: flex;
+    gap: 12px;
+    padding: 40px 40px 0;
+    flex-wrap: wrap;
+  }
+
+  .spec-pill {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    background: var(--bg2);
+  }
+
+  .spec-pill span { color: var(--text); }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">LLM Inference Benchmark <span>// Phase 1</span></div>
+    <div style="font-size:11px;color:var(--text-dim);margin-top:4px;font-family:'JetBrains Mono',monospace;">
+      RTX 5060 Laptop GPU · 8GB VRAM · WSL2 · CUDA 12.8
+    </div>
+  </div>
+  <div class="header-meta">
+    <span class="badge badge-green">● LIVE DATA</span>
+    <span class="badge badge-blue">Phi-3-mini Q4_K_M</span>
+  </div>
+</header>
+
+<!-- GPU SPECS -->
+<div class="specs-row">
+  <div class="spec-pill">GPU <span>RTX 5060 Laptop</span></div>
+  <div class="spec-pill">VRAM <span>8,151 MiB</span></div>
+  <div class="spec-pill">Bandwidth <span>~272 GB/s</span></div>
+  <div class="spec-pill">CUDA <span>12.8 / sm_120</span></div>
+  <div class="spec-pill">Arch <span>Blackwell</span></div>
+  <div class="spec-pill">Idle VRAM <span>157 MiB (1.9%)</span></div>
+  <div class="spec-pill">Idle Power <span>3.5W / 80W</span></div>
+  <div class="spec-pill">Model <span>Phi-3-mini 3.8B</span></div>
+  <div class="spec-pill">Quant <span>Q4_K_M (4.5 bits/w)</span></div>
+</div>
+
+<!-- HERO STATS -->
+<div class="hero">
+  <div class="stat-card blue">
+    <div class="stat-label">vLLM Peak Throughput</div>
+    <div class="stat-value">190</div>
+    <div class="stat-unit">tokens / sec @ 4 concurrent</div>
+    <div class="stat-sub">↑ 2.65× vs single request</div>
+  </div>
+  <div class="stat-card orange">
+    <div class="stat-label">Ollama Latency @ n=4</div>
+    <div class="stat-value">10.0</div>
+    <div class="stat-unit">seconds to first token</div>
+    <div class="stat-sub">↑ 31× worse than vLLM</div>
+  </div>
+  <div class="stat-card purple">
+    <div class="stat-label">llama.cpp Full GPU</div>
+    <div class="stat-value">83.5</div>
+    <div class="stat-unit">generation tokens / sec</div>
+    <div class="stat-sub">↓ 10.7× faster than CPU</div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-label">Model VRAM Usage</div>
+    <div class="stat-value">2,228</div>
+    <div class="stat-unit">MiB weights on GPU</div>
+    <div class="stat-sub">+ 1,536 MiB KV cache</div>
+  </div>
+</div>
+
+<!-- SECTION: CONCURRENCY SCALING -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">Concurrency Scaling</div>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="chart-grid chart-grid-2">
+    <div class="chart-card">
+      <div class="chart-title">Total Throughput vs Concurrent Requests</div>
+      <div class="chart-subtitle">vLLM continuous batching vs Ollama sequential serving</div>
+      <div class="chart-wrap">
+        <canvas id="throughputChart"></canvas>
+      </div>
+      <div class="insight">
+        <strong>Why vLLM scales:</strong> At n=4, vLLM batches all 4 requests into a single GPU forward pass per step — 
+        matrix × matrix instead of matrix × vector. Same VRAM bandwidth, 4× the output. 
+        Effective bytes/token drops from 2,350MB to ~587MB, pushing past the single-request ceiling.
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">Average Latency (TTFT) vs Concurrent Requests</div>
+      <div class="chart-subtitle">Time to first token — what the user actually feels</div>
+      <div class="chart-wrap">
+        <canvas id="latencyChart"></canvas>
+      </div>
+      <div class="insight insight-warn">
+        <strong>Why Ollama's latency explodes:</strong> Ollama serves requests sequentially. 
+        At n=4, request 4 waits for requests 1, 2, 3 to fully complete before seeing its first token. 
+        10 seconds TTFT = user has already closed the tab.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION: llama.cpp GPU LAYER ANALYSIS -->
+<div class="section" style="padding-top:32px;">
+  <div class="section-header">
+    <div class="section-title">llama.cpp — GPU Layer Split Analysis</div>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="chart-grid chart-grid-2">
+    <div class="chart-card">
+      <div class="chart-title">Generation Speed vs GPU Layers</div>
+      <div class="chart-subtitle">Same model, same weights — different memory routing</div>
+      <div class="chart-wrap">
+        <canvas id="layerChart"></canvas>
+      </div>
+      <div class="insight">
+        <strong>The PCIe penalty:</strong> Half-GPU (ngl=16) gives 14 t/s — barely better than pure CPU at 8.4 t/s. 
+        Each token requires a round-trip across the PCIe bus between GPU and CPU layers. 
+        The bus latency (~75μs × 200 tokens = 15s overhead) dominates.
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-title">VRAM Consumption by Configuration</div>
+      <div class="chart-subtitle">Model weights + KV cache + compute buffers</div>
+      <div class="chart-wrap">
+        <canvas id="vramChart"></canvas>
+      </div>
+      <div class="insight">
+        <strong>Memory breakdown @ full GPU:</strong> 
+        2,228 MiB model weights + 1,536 MiB KV cache (4K context) + 74 MiB compute = 3,839 MiB total. 
+        KV cache is pre-allocated for max context — this is the fragmentation problem vLLM's paged attention solves.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION: VRAM TIMELINE -->
+<div class="section" style="padding-top:32px;">
+  <div class="section-header">
+    <div class="section-title">VRAM Timeline — Model Load Spike</div>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-title">VRAM Usage Over Time (llama.cpp full GPU run)</div>
+    <div class="chart-subtitle">
+      Captured via gpu_watch.py sampling nvidia-smi every 500ms. 
+      The spike pattern reveals model loading → KV cache allocation → inference → unload.
+    </div>
+    <div class="vram-labels">
+      <div class="vram-label"><div class="vram-dot" style="background:var(--vllm)"></div>VRAM Used (MB)</div>
+      <div class="vram-label"><div class="vram-dot" style="background:var(--good)"></div>Idle baseline: 91 MB</div>
+      <div class="vram-label"><div class="vram-dot" style="background:var(--warn)"></div>Peak: 4,048 MB</div>
+      <div class="vram-label"><div class="vram-dot" style="background:var(--llamacpp)"></div>Steady state: ~4,048 MB</div>
+    </div>
+    <div class="chart-wrap-tall">
+      <canvas id="timelineChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION: COMPARISON TABLE -->
+<div class="section" style="padding-top:32px; padding-bottom:40px;">
+  <div class="section-header">
+    <div class="section-title">Full Benchmark Summary</div>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="chart-card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Backend</th>
+            <th>Config</th>
+            <th>Prompt t/s</th>
+            <th>Gen t/s</th>
+            <th>TTFT</th>
+            <th>VRAM Delta</th>
+            <th>Concurrency</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="td-backend td-llama">llama.cpp</td>
+            <td class="mono">ngl=33 (full GPU)</td>
+            <td class="td-good">165.5</td>
+            <td class="td-good">83.5</td>
+            <td class="mono">—</td>
+            <td class="mono">3,957 MB</td>
+            <td class="td-bad">1</td>
+            <td style="color:var(--text-dim)">CLI, no server</td>
+          </tr>
+          <tr>
+            <td class="td-backend td-llama">llama.cpp</td>
+            <td class="mono">ngl=16 (half GPU)</td>
+            <td class="td-warn">58.3</td>
+            <td class="td-bad">14.0</td>
+            <td class="mono">—</td>
+            <td class="mono">2,015 MB</td>
+            <td class="td-bad">1</td>
+            <td style="color:var(--text-dim)">PCIe bottleneck</td>
+          </tr>
+          <tr>
+            <td class="td-backend td-llama">llama.cpp</td>
+            <td class="mono">ngl=0 (CPU only)</td>
+            <td class="td-bad">47.1</td>
+            <td class="td-bad">8.4</td>
+            <td class="mono">—</td>
+            <td class="mono">247 MB</td>
+            <td class="td-bad">1</td>
+            <td style="color:var(--text-dim)">RAM bandwidth bound</td>
+          </tr>
+          <tr>
+            <td class="td-backend td-ollama">Ollama</td>
+            <td class="mono">n=1</td>
+            <td class="mono">—</td>
+            <td class="td-good">88.0</td>
+            <td class="td-good">0.32s</td>
+            <td class="mono">~3,900 MB</td>
+            <td class="mono">1</td>
+            <td style="color:var(--text-dim)">Model persistent</td>
+          </tr>
+          <tr>
+            <td class="td-backend td-ollama">Ollama</td>
+            <td class="mono">n=4</td>
+            <td class="mono">—</td>
+            <td class="td-warn">91.3</td>
+            <td class="td-bad">10.04s</td>
+            <td class="mono">~3,900 MB</td>
+            <td class="td-warn">4 (queued)</td>
+            <td style="color:var(--text-dim)">Sequential serving</td>
+          </tr>
+          <tr>
+            <td class="td-backend td-vllm">vLLM</td>
+            <td class="mono">n=1</td>
+            <td class="mono">—</td>
+            <td class="td-good">71.7</td>
+            <td class="td-warn">0.75s</td>
+            <td class="mono">~6,800 MB</td>
+            <td class="mono">1</td>
+            <td style="color:var(--text-dim)">Paged attn overhead</td>
+          </tr>
+          <tr>
+            <td class="td-backend td-vllm">vLLM</td>
+            <td class="mono">n=4</td>
+            <td class="mono">—</td>
+            <td class="td-good">190.1</td>
+            <td class="td-good">0.10s</td>
+            <td class="mono">~6,800 MB</td>
+            <td class="td-good">4 (batched)</td>
+            <td style="color:var(--text-dim)">Continuous batching</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-text">LLM-FINE-TUNING / Phase 1 — Inference Core · Phi-3-mini-4k-instruct-Q4_K_M</div>
+  <div class="footer-text">RTX 5060 Laptop GPU · Blackwell sm_120 · CUDA 12.8.93 · llama.cpp b9093</div>
+</footer>
+
+<script>
+// ── DATA ──────────────────────────────────────────────
+const vllmData = {
+  concurrent: [1, 2, 4],
+  throughput:  [71.7, 124.9, 190.1],
+  latency:     [0.75, 0.07, 0.10]
+};
+
+const ollamaData = {
+  concurrent: [1, 2, 4],
+  throughput:  [88.0, 112.6, 91.3],
+  latency:     [0.32, 3.01, 10.04]
+};
+
+const llamaData = {
+  configs:     ['CPU only\n(ngl=0)', 'Half GPU\n(ngl=16)', 'Full GPU\n(ngl=33)'],
+  genSpeed:    [8.4, 14.0, 83.5],
+  promptSpeed: [47.1, 58.3, 165.5],
+  vramDelta:   [247, 2015, 3957],
+  vramModel:   [0, 1088, 2228],
+  vramKV:      [0, 720, 1536],
+  vramCompute: [145, 89, 74]
+};
+
+// VRAM timeline from llamacpp full GPU run
+const vramTimeline = [91, 192, 2422, 4034, 4048, 4048, 4048, 4048];
+const vramLabels   = vramTimeline.map((_, i) => `${(i * 0.5).toFixed(1)}s`);
+
+// ── CHART DEFAULTS ────────────────────────────────────
+Chart.defaults.color = '#4a5568';
+Chart.defaults.borderColor = '#1e2d3d';
+Chart.defaults.font.family = "'JetBrains Mono', monospace";
+Chart.defaults.font.size = 11;
+
+const gridColor = 'rgba(30,45,61,0.8)';
+
+function baseOptions(yLabel) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: '#4a5568',
+          boxWidth: 10,
+          padding: 20,
+          font: { size: 10, family: "'JetBrains Mono', monospace" }
+        }
+      },
+      tooltip: {
+        backgroundColor: '#0d1117',
+        borderColor: '#1e2d3d',
+        borderWidth: 1,
+        titleColor: '#c9d1d9',
+        bodyColor: '#4a5568',
+        padding: 12,
+        titleFont: { family: "'JetBrains Mono', monospace", size: 11 },
+        bodyFont:  { family: "'JetBrains Mono', monospace", size: 11 }
+      }
+    },
+    scales: {
+      x: {
+        grid: { color: gridColor },
+        ticks: { color: '#4a5568' }
+      },
+      y: {
+        grid: { color: gridColor },
+        ticks: { color: '#4a5568' },
+        title: { display: !!yLabel, text: yLabel, color: '#4a5568', font: { size: 10 } }
+      }
+    }
+  };
+}
+
+// ── CHART 1: THROUGHPUT ───────────────────────────────
+new Chart(document.getElementById('throughputChart'), {
+  type: 'line',
+  data: {
+    labels: ['1', '2', '4'],
+    datasets: [
+      {
+        label: 'vLLM (continuous batching)',
+        data: vllmData.throughput,
+        borderColor: '#00d4ff',
+        backgroundColor: 'rgba(0,212,255,0.08)',
+        pointBackgroundColor: '#00d4ff',
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3
+      },
+      {
+        label: 'Ollama (sequential)',
+        data: ollamaData.throughput,
+        borderColor: '#ff6b35',
+        backgroundColor: 'rgba(255,107,53,0.05)',
+        pointBackgroundColor: '#ff6b35',
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3,
+        borderDash: [4, 3]
+      }
+    ]
+  },
+  options: {
+    ...baseOptions('tokens / sec'),
+    plugins: {
+      ...baseOptions().plugins,
+      annotation: {}
+    },
+    scales: {
+      ...baseOptions('tokens / sec').scales,
+      x: { ...baseOptions('tokens / sec').scales.x, title: { display: true, text: 'concurrent requests', color: '#4a5568', font: { size: 10 } } }
+    }
+  }
+});
+
+// ── CHART 2: LATENCY ──────────────────────────────────
+new Chart(document.getElementById('latencyChart'), {
+  type: 'line',
+  data: {
+    labels: ['1', '2', '4'],
+    datasets: [
+      {
+        label: 'vLLM TTFT',
+        data: vllmData.latency,
+        borderColor: '#00d4ff',
+        backgroundColor: 'rgba(0,212,255,0.08)',
+        pointBackgroundColor: '#00d4ff',
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3
+      },
+      {
+        label: 'Ollama TTFT',
+        data: ollamaData.latency,
+        borderColor: '#ff6b35',
+        backgroundColor: 'rgba(255,107,53,0.05)',
+        pointBackgroundColor: '#ff6b35',
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        borderWidth: 2,
+        fill: true,
+        tension: 0.3,
+        borderDash: [4, 3]
+      }
+    ]
+  },
+  options: {
+    ...baseOptions('seconds (lower = better)'),
+    scales: {
+      ...baseOptions('seconds').scales,
+      x: { ...baseOptions().scales.x, title: { display: true, text: 'concurrent requests', color: '#4a5568', font: { size: 10 } } }
+    }
+  }
+});
+
+// ── CHART 3: GPU LAYER SPLIT ──────────────────────────
+new Chart(document.getElementById('layerChart'), {
+  type: 'bar',
+  data: {
+    labels: ['CPU only (ngl=0)', 'Half GPU (ngl=16)', 'Full GPU (ngl=33)'],
+    datasets: [
+      {
+        label: 'Generation t/s',
+        data: llamaData.genSpeed,
+        backgroundColor: ['rgba(248,113,113,0.7)', 'rgba(251,191,36,0.7)', 'rgba(0,212,255,0.7)'],
+        borderColor:      ['#f87171', '#fbbf24', '#00d4ff'],
+        borderWidth: 1,
+        borderRadius: 2
+      },
+      {
+        label: 'Prompt t/s',
+        data: llamaData.promptSpeed,
+        backgroundColor: ['rgba(248,113,113,0.3)', 'rgba(251,191,36,0.3)', 'rgba(0,212,255,0.3)'],
+        borderColor:      ['#f87171', '#fbbf24', '#00d4ff'],
+        borderWidth: 1,
+        borderRadius: 2,
+        borderDash: [4, 3]
+      }
+    ]
+  },
+  options: baseOptions('tokens / sec')
+});
+
+// ── CHART 4: VRAM BREAKDOWN ───────────────────────────
+new Chart(document.getElementById('vramChart'), {
+  type: 'bar',
+  data: {
+    labels: ['CPU only', 'Half GPU', 'Full GPU'],
+    datasets: [
+      {
+        label: 'Model Weights',
+        data: llamaData.vramModel,
+        backgroundColor: 'rgba(167,139,250,0.8)',
+        borderColor: '#a78bfa',
+        borderWidth: 1,
+        borderRadius: 2
+      },
+      {
+        label: 'KV Cache',
+        data: llamaData.vramKV,
+        backgroundColor: 'rgba(0,212,255,0.6)',
+        borderColor: '#00d4ff',
+        borderWidth: 1,
+        borderRadius: 2
+      },
+      {
+        label: 'Compute Buffers',
+        data: llamaData.vramCompute,
+        backgroundColor: 'rgba(57,255,20,0.5)',
+        borderColor: '#39ff14',
+        borderWidth: 1,
+        borderRadius: 2
+      }
+    ]
+  },
+  options: {
+    ...baseOptions('MiB'),
+    plugins: { ...baseOptions().plugins },
+    scales: {
+      ...baseOptions('MiB').scales,
+      x: { stacked: true, ...baseOptions().scales.x },
+      y: { stacked: true, ...baseOptions('MiB').scales.y }
+    }
+  }
+});
+
+// ── CHART 5: VRAM TIMELINE ────────────────────────────
+new Chart(document.getElementById('timelineChart'), {
+  type: 'line',
+  data: {
+    labels: vramLabels,
+    datasets: [
+      {
+        label: 'VRAM Used (MiB)',
+        data: vramTimeline,
+        borderColor: '#00d4ff',
+        backgroundColor: (ctx) => {
+          const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 320);
+          gradient.addColorStop(0,   'rgba(0,212,255,0.3)');
+          gradient.addColorStop(1,   'rgba(0,212,255,0.01)');
+          return gradient;
+        },
+        pointBackgroundColor: '#00d4ff',
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        borderWidth: 2,
+        fill: true,
+        tension: 0.2
+      }
+    ]
+  },
+  options: {
+    ...baseOptions('MiB'),
+    plugins: {
+      ...baseOptions().plugins,
+      annotation: {}
+    },
+    scales: {
+      ...baseOptions('MiB').scales,
+      x: { ...baseOptions().scales.x, title: { display: true, text: 'time (seconds from run start)', color: '#4a5568', font: { size: 10 } } },
+      y: {
+        ...baseOptions('MiB').scales.y,
+        min: 0,
+        max: 5000,
+        ticks: {
+          color: '#4a5568',
+          callback: v => v >= 1000 ? (v/1000).toFixed(1)+'G' : v+'M'
+        }
+      }
+    }
+  }
+});
+
+// ── ANNOTATE TIMELINE ─────────────────────────────────
+// Add text annotations manually via plugin
+const timelineAnnotations = [
+  { x: 1, label: 'weights\nloading', color: '#fbbf24' },
+  { x: 3, label: 'KV cache\nalloc', color: '#a78bfa' },
+  { x: 5, label: 'inference\nrunning', color: '#39ff14' }
+];
+</script>
+</body>
+</html>
