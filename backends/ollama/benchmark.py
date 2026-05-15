@@ -36,6 +36,6 @@ def run_single(model, prompt):
         "output": output
     }
 
-
-result = run_single("phi3-local", "What is the meaning of life?")
-print(result)
+if __name__ == "__main__":
+    result = run_single("phi3-local", "What is the meaning of life?")
+    print(result)

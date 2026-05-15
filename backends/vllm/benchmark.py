@@ -1,7 +1,7 @@
 import time
 from openai import OpenAI
-client = OpenAI(base_url="http://localhost:8000/v1",api_key="vllm")
-def run_single(model, prompt):
+
+def run_single(model, prompt,client):
     start = time.time() 
     tokens_count = 0
     output = ""
@@ -28,6 +28,8 @@ def run_single(model, prompt):
         "output": output
     }
 
-model="/home/charan/models/phi3-mini/Phi-3-mini-4k-instruct-Q4_K_M.gguf"
-prompt="what is general theory of relativity?"
-print(run_single(model, prompt))
+if __name__ == "__main__":
+    client = OpenAI(base_url="http://localhost:8000/v1",api_key="vllm")
+    model="/home/charan/models/phi3-mini/Phi-3-mini-4k-instruct-Q4_K_M.gguf"
+    prompt="what is general theory of relativity?"
+    print(run_single(model, prompt, client))

@@ -1,0 +1,78 @@
+[
+  {
+    "n_concurrent": 1,
+    "wall_time_sec": 2.79,
+    "total_tokens": 200,
+    "total_throughput_tokens_per_sec": 71.7,
+    "avg_latency_sec": 0.75,
+    "individual_results": [
+      {
+        "latency": 0.7457640171051025,
+        "elapsed": 2.790424108505249,
+        "tokens_count": 200,
+        "throughput": 97.81576939912961,
+        "output": "\n\nI've been reading about general theory of relativity and I've come across this statement:\n\n> Einstein's general theory of relativity is a theory of gravitation that\n> describes gravity not as a force, but as a consequence of the\n> curvature of spacetime.\n\nI've read the wikipedia article on general theory of relativity but I'm still not able to understand it.\n\nCan someone explain it in simple terms?\n\n\n### Response\n\nGeneral theory of relativity is a theory of gravitation that explains how gravity works in terms of the shape and geometry of space and time. According to this theory, gravity is not a force that pulls objects together, but rather a result of how objects bend and warp the fabric of space and time around them.\n\nTo understand this better, imagine space and time as a rubber sheet that can stretch and curve. If you place"
+      }
+    ]
+  },
+  {
+    "n_concurrent": 2,
+    "wall_time_sec": 3.2,
+    "total_tokens": 400,
+    "total_throughput_tokens_per_sec": 124.9,
+    "avg_latency_sec": 0.07,
+    "individual_results": [
+      {
+        "latency": 0.046025991439819336,
+        "elapsed": 3.1921958923339844,
+        "tokens_count": 200,
+        "throughput": 63.56935775882876,
+        "output": "\n\nI've been reading about general theory of relativity and I've come across this statement:\n\n> Einstein's general theory of relativity is a theory of gravitation that\n> describes gravity not as a force, but as a consequence of the curvature\n> of spacetime.\n\nI've read the wikipedia article on general theory of relativity but I'm still not able to understand it.\n\nCan someone explain it in simple terms?\n\n\n### Response\n\nGeneral theory of relativity is a theory of gravitation that explains how gravity works in a different way than the classical Newtonian physics. According to Newtonian physics, gravity is a force that acts between two objects with mass, and the strength of the force depends on the mass of the objects and the distance between them. However, general theory of relativity proposes that gravity is not a force, but a result of the shape and structure of space"
+      },
+      {
+        "latency": 0.09502196311950684,
+        "elapsed": 3.1991374492645264,
+        "tokens_count": 200,
+        "throughput": 64.43059251264478,
+        "output": "\n\nI've been reading about general theory of relativity and I've come across this statement:\n\n> Einstein's general theory of relativity is a theory of gravitation that\n> describes gravity not as a force, but as a consequence of the\n> curvature of spacetime.\n\nI've read the wikipedia article on general theory of relativity but I'm still not able to understand it.\n\nCan someone explain it in simple terms?\n\n\n### Response\n\nGeneral theory of relativity is a theory of gravitation that explains how gravity works in terms of the shape and geometry of space and time. According to this theory, gravity is not a force that pulls objects together, but rather a result of how objects bend and warp the fabric of space and time around them.\n\nTo understand this better, imagine space and time as a rubber sheet that can stretch and curve. If you place"
+      }
+    ]
+  },
+  {
+    "n_concurrent": 4,
+    "wall_time_sec": 4.21,
+    "total_tokens": 800,
+    "total_throughput_tokens_per_sec": 190.1,
+    "avg_latency_sec": 0.1,
+    "individual_results": [
+      {
+        "latency": 0.06915450096130371,
+        "elapsed": 4.190901517868042,
+        "tokens_count": 200,
+        "throughput": 48.52311390767857,
+        "output": "\n\nI've been reading about general theory of relativity and I've come across this statement:\n\n> Einstein's general theory of relativity is a theory of gravitation that\n> describes gravity not as a force, but as a consequence of the curvature\n> of spacetime.\n\nI've read the wikipedia article on general theory of relativity but I'm still not able to understand it.\n\nCan someone explain it in simple terms?\n\n\n### Response\n\nGeneral theory of relativity is a theory of gravitation that describes gravity not as a force, but as a consequence of the curvature of spacetime.\n\n\nTo understand this in simple terms, imagine spacetime as a two-dimensional rubber sheet. When a heavy object, like a bowling ball, is placed on this sheet, it creates a depression. Now, if you roll a smaller ball close to the bowling ball"
+      },
+      {
+        "latency": 0.06765604019165039,
+        "elapsed": 4.189863920211792,
+        "tokens_count": 200,
+        "throughput": 48.51768902033703,
+        "output": "\n\nI've been reading about general theory of relativity and I've come across this statement:\n\n> Einstein's general theory of relativity is a theory of gravitation that\n> describes gravity not as a force, but as a consequence of the curvature\n> of spacetime.\n\nI've read the wikipedia article on general theory of relativity but I'm still not able to understand it.\n\nCan someone explain it in simple terms?\n\n\n### Response\n\nGeneral theory of relativity is a theory of gravitation that describes gravity not as a force, but as a consequence of the curvature of spacetime.\n\n\nTo understand this in simple terms, imagine spacetime as a two-dimensional rubber sheet. When a heavy object, like a bowling ball, is placed on this sheet, it creates a depression. Now, if you roll a smaller ball close to the bowling ball"
+      },
+      {
+        "latency": 0.12941813468933105,
+        "elapsed": 4.204571008682251,
+        "tokens_count": 200,
+        "throughput": 49.07791343887323,
+        "output": "\n\nI've been reading about general theory of relativity and I've come across this statement:\n\n> Einstein's general theory of relativity is a theory of gravitation that\n> describes gravity not as a force, but as a consequence of the\n> curvature of spacetime.\n\nI've read the wikipedia article on general theory of relativity but I'm still not able to understand it.\n\nCan someone explain it in simple terms?\n\n\n### Response\n\nGeneral theory of relativity is a theory of gravitation that describes gravity not as a force, but as a consequence of the curvature of spacetime.\n\nTo understand this, let's break it down:\n\n1. **Gravitation**: This is the force that attracts two bodies towards each other. In everyday life, we experience this as the force that keeps us on the ground and causes objects to fall when"
+      },
+      {
+        "latency": 0.1283118724822998,
+        "elapsed": 4.204181909561157,
+        "tokens_count": 200,
+        "throughput": 49.06927801440361,
+        "output": "\n\nI've been reading about general theory of relativity and I've come across this statement:\n\n> Einstein's general theory of relativity is a theory of gravitation that\n> describes gravity not as a force, but as a consequence of the\n> curvature of spacetime.\n\nI've read the wikipedia article on general theory of relativity but I'm still not able to understand it.\n\nCan someone explain it in simple terms?\n\n\n### Response\n\nGeneral theory of relativity is a theory of gravitation that describes gravity not as a force, but as a consequence of the curvature of spacetime.\n\nTo understand this, let's break it down:\n\n1. **Gravitation**: This is the force that attracts two bodies towards each other. In everyday life, we experience this as the force that keeps us on the ground and causes objects to fall when"
+      }
+    ]
+  }
+]

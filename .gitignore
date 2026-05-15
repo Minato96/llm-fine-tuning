@@ -1,2 +1,4 @@
 /.venv/
 /llama.cpp/
+/backends/ollama/__pycache__/
+/backends/vllm/__pycache__/
