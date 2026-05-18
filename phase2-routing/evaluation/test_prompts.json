@@ -1,0 +1,65 @@
+{
+  "dataset_description": "Exemplar prompts for training or testing an LLM semantic router.",
+  "routes": {
+    "phi3": [
+      {
+        "intent": "complex_physics",
+        "prompt": "Explain quantum entanglement to a high school student."
+      },
+      {
+        "intent": "cosmology_reasoning",
+        "prompt": "Why is the universe not completely symmetric?"
+      },
+      {
+        "intent": "basic_logic_math",
+        "prompt": "What is 2+2?"
+      },
+      {
+        "intent": "philosophical_debate",
+        "prompt": "Discuss the ethical implications of artificial intelligence in the medical field."
+      },
+      {
+        "intent": "creative_writing",
+        "prompt": "Write a short sci-fi story about a time traveler who gets stuck in the 1920s."
+      },
+      {
+        "intent": "nuanced_advice",
+        "prompt": "How do I handle a disagreement with a coworker politely?"
+      },
+      {
+        "intent": "historical_analysis",
+        "prompt": "Explain the primary causes of the Industrial Revolution."
+      }
+    ],
+    "qwen2.5_0.5b": [
+      {
+        "intent": "basic_api_routing",
+        "prompt": "Write a basic FastAPI route to fetch user data."
+      },
+      {
+        "intent": "database_queries",
+        "prompt": "Write a SQLite query to select all users who signed up in the last 30 days."
+      },
+      {
+        "intent": "multilingual_translation",
+        "prompt": "Translate the phrase 'The system is currently undergoing maintenance' into French and Mandarin."
+      },
+      {
+        "intent": "data_extraction_json",
+        "prompt": "Extract the names and ages from this text and format it as a JSON object: 'Alice is 28 and Bob is 34'."
+      },
+      {
+        "intent": "fast_summarization",
+        "prompt": "Summarize the following system log error in one sentence."
+      },
+      {
+        "intent": "regex_generation",
+        "prompt": "Provide a Python regex pattern to match a standard email address."
+      },
+      {
+        "intent": "cloud_infrastructure",
+        "prompt": "Give me a basic example of connecting to a Supabase database using Python."
+      }
+    ]
+  }
+}
