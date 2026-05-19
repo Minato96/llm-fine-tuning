@@ -14,7 +14,7 @@ class EmbeddingRouter:
         self._train_router()
         print("EmbeddingRouter initialized with weak model:", self.weak_model, "and strong model:", self.strong_model)
 
-    def load_router_exemplars(self,filepath="phase2-routing/evaluation/train_prompts.json"):
+    def load_router_exemplars(self,filepath="phase2_routing/evaluation/train_prompts.json"):
         with open(filepath, "r") as file:
             data = json.load(file)
 
