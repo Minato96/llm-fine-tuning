@@ -20,7 +20,7 @@ The constraint of consumer hardware isn't a limitation. It forces genuine unders
 
 | Phase | Topic | Status | Details |
 |-------|-------|--------|---------|
-| 1 | High Performance Inference Core | ✅ Complete | [PHASE1.md](blob/main/phase1.md) |
+| 1 | High Performance Inference Core | ✅ Complete | [PHASE1.md](phase1.md) |
 | 2 | Intelligent Routing Layer | ✅ Complete | [PHASE2.md](blob/main/phase2_routing/phase2.md) |
 | 3 | LoRA Fine-tuning + Full Model Lifecycle | 🔄 In Progress | — |
 | 4 | Adaptive Memory Architecture | ⬜ Planned | — |
