@@ -2,3 +2,4 @@
 /llama.cpp/
 /backends/ollama/__pycache__/
 /backends/vllm/__pycache__/
+/unsloth_compiled_cache/
