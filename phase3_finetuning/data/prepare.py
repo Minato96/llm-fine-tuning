@@ -8,15 +8,15 @@ class dataset_handler:
         print(type(self.ds))
     def prepare_data(self, max_tokens=512):
         # Filter out samples with code longer than max_tokens and those without code or docstring
-        self.ds =self.ds.filter(lambda x: len(x['func_code_string'])<max_tokens*4)
+        self.ds =self.ds.filter(lambda x: len(x['func_code_tokens'])<max_tokens)
 
         #filter out samples without code or docstring
         self.ds = self.ds.filter(
-            lambda x: x['func_code_string'] and x['func_documentation_string']
+            lambda x: x['func_code_tokens'] and x['func_documentation_string']
         )
 
         # Select only the relevant columns
-        self.ds = self.ds.select_columns(["func_code_string", "func_documentation_string"])
+        self.ds = self.ds.select_columns(["func_code_tokens", "func_documentation_string"])
 
         #remove the docstrings which are too short
         self.ds = self.ds.filter(
@@ -27,14 +27,14 @@ class dataset_handler:
         
 
     def format_helper(self, code, docstring):
-        
+        code = " ".join(code)
         formatted_string= f"""
         <|user|>\nGenerate a docstring for this python function:\n\n{code}<|end|>\n<|assistant|>\n{docstring}<|end|>
         """
         return {"text": formatted_string}
     
     def format_data(self):
-        self.ds = self.ds.map(lambda x: self.format_helper(x['func_code_string'], x['func_documentation_string']))
+        self.ds = self.ds.map(lambda x: self.format_helper(x['func_code_tokens'], x['func_documentation_string']))
     
     def save_data(self,train_size=2000, test_size=200, output_dir="phase3_finetuning/data/processed"):
         os.makedirs(output_dir, exist_ok=True)

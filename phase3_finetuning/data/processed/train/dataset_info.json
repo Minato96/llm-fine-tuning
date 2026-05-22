@@ -21,9 +21,12 @@
   },
   "download_size": 581272659,
   "features": {
-    "func_code_string": {
-      "dtype": "string",
-      "_type": "Value"
+    "func_code_tokens": {
+      "feature": {
+        "dtype": "string",
+        "_type": "Value"
+      },
+      "_type": "List"
     },
     "func_documentation_string": {
       "dtype": "string",
